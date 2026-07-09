@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: asist_mongo
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: telegram_invite_bot
+
+  redis:
+    image: redis:7-alpine
+    container_name: asist_redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+
+  bot:
+    build: .
+    container_name: asist_bot
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+      - redis
+    env_file:
+      - .env
+    volumes:
+      - ./backups:/app/backups
+      - ./exports:/app/exports
+      - ./logs:/app/logs
+
+volumes:
+  mongo_data:
+  redis_data:

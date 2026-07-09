@@ -1,0 +1,18 @@
+{
+  "name": "Telegram Assistant Bot",
+  "description": "Multi-feature Telegram assistant with invite management, AI, analytics, and more",
+  "repository": "https://github.com/itachiplub-cloud/asist",
+  "keywords": ["telegram", "pyrogram", "assistant", "invite-bot", "mongodb"],
+  "env": {
+    "API_ID": { "description": "Telegram API ID", "required": true },
+    "API_HASH": { "description": "Telegram API Hash", "required": true },
+    "STRING_SESSION": { "description": "Pyrogram string session", "required": true },
+    "OWNER_ID": { "description": "Your Telegram user ID", "required": true },
+    "MONGO_URI": { "description": "MongoDB connection URI", "value": "mongodb+srv://..." },
+    "DB_NAME": { "description": "Database name", "value": "telegram_invite_bot" }
+  },
+  "addons": ["mongolab", "heroku-redis"],
+  "buildpacks": [
+    { "url": "heroku/python" }
+  ]
+}
