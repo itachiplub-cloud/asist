@@ -181,6 +181,7 @@ async def main():
         session_string=STRING_SESSION,
         parse_mode=ParseMode.MARKDOWN,
         sleep_threshold=30,
+        in_memory=True,
     )
 
     # ── Bot: receives commands via DM, replies ──
@@ -191,14 +192,23 @@ async def main():
         bot_token=BOT_TOKEN,
         parse_mode=ParseMode.MARKDOWN,
         sleep_threshold=30,
+        in_memory=True,
     )
 
     client_manager.userbot = userbot
     client_manager.bot = bot
 
     # Register command handlers on bot only
+    registered = 0
     for handler_fn, handler_filter in HANDLERS:
         bot.add_handler(MessageHandler(handler_fn, handler_filter))
+        registered += 1
+    logger.info(f"Registered {registered} command handlers on bot")
+
+    # Debug handler: log every message the bot receives (lowest priority)
+    async def _echo(client, message):
+        logger.info(f"Bot received: '{message.text}' from {message.from_user.id} in chat {message.chat.id}")
+    bot.add_handler(MessageHandler(_echo, filters.all), group=1)
 
     # Register AI handlers on userbot (spam detection, welcome, FAQ)
     userbot.add_handler(MessageHandler(handle_message, filters.text))
