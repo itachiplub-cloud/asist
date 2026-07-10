@@ -5,7 +5,6 @@ from services.recommendation_service import get_recommendations
 from utils.logger import logger
 
 
-@Client.on_message(filters.command("recommend"))
 async def recommend_cmd(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")

@@ -8,7 +8,6 @@ from utils.logger import logger
 db = Database()
 
 
-@Client.on_message(filters.command("notify"))
 async def notify_settings(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ Only the owner can configure notifications.")
@@ -34,7 +33,6 @@ async def notify_settings(client: Client, message: Message):
     await message.reply(f"✅ Notification `{setting}` set to {'ON' if value else 'OFF'}.")
 
 
-@Client.on_message(filters.command("notifications"))
 async def list_notifications(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ Only the owner can view notification settings.")

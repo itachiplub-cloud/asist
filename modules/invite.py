@@ -27,7 +27,6 @@ async def resume_invite():
     invite_running[source_id] = True
 
 
-@Client.on_message(filters.command("invite"))
 async def invite_start(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -222,7 +221,6 @@ async def invite_start(client: Client, message: Message):
     logger.info(f"Invite process finished for {source_chat_id}")
 
 
-@Client.on_message(filters.command("stopinvite"))
 async def stop_invite(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")

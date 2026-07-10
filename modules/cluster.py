@@ -8,7 +8,6 @@ from utils.logger import logger
 db = Database()
 
 
-@Client.on_message(filters.command("addassistant"))
 async def add_assistant(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -28,7 +27,6 @@ async def add_assistant(client: Client, message: Message):
         await message.reply(f"⚠️ Assistant added to DB but failed to connect. Check session string.")
 
 
-@Client.on_message(filters.command("removeassistant"))
 async def remove_assistant(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -49,7 +47,6 @@ async def remove_assistant(client: Client, message: Message):
     await message.reply("✅ Assistant removed.")
 
 
-@Client.on_message(filters.command("listassistants"))
 async def list_assistants(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")

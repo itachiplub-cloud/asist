@@ -11,7 +11,6 @@ from utils.logger import logger
 db = Database()
 
 
-@Client.on_message(filters.command("load"))
 async def load_plugin_cmd(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -29,7 +28,6 @@ async def load_plugin_cmd(client: Client, message: Message):
         await message.reply(f"❌ Failed to load plugin `{name}`.")
 
 
-@Client.on_message(filters.command("unload"))
 async def unload_plugin_cmd(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -47,7 +45,6 @@ async def unload_plugin_cmd(client: Client, message: Message):
         await message.reply(f"❌ Failed to unload plugin `{name}`.")
 
 
-@Client.on_message(filters.command("reload"))
 async def reload_plugin_cmd(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -65,7 +62,6 @@ async def reload_plugin_cmd(client: Client, message: Message):
         await message.reply(f"❌ Failed to reload plugin `{name}`.")
 
 
-@Client.on_message(filters.command("plugins"))
 async def list_plugins(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")

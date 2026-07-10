@@ -7,7 +7,6 @@ from utils.logger import logger
 db = Database()
 
 
-@Client.on_message(filters.command("ping"))
 async def ping_command(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -21,7 +20,6 @@ async def ping_command(client: Client, message: Message):
     await ms.edit_text(f"🏓 **Pong!** `{latency}ms`")
 
 
-@Client.on_message(filters.command("stats"))
 async def stats_command(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")

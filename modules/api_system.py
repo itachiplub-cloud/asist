@@ -5,7 +5,6 @@ from services.api_service import create_api_key, revoke_api_key, list_api_keys
 from utils.logger import logger
 
 
-@Client.on_message(filters.command("apikey"))
 async def api_key_cmd(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -29,7 +28,6 @@ async def api_key_cmd(client: Client, message: Message):
     )
 
 
-@Client.on_message(filters.command("revokeapikey"))
 async def revoke_api_key_cmd(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -44,7 +42,6 @@ async def revoke_api_key_cmd(client: Client, message: Message):
     await message.reply("✅ API key revoked." if success else "❌ Key not found.")
 
 
-@Client.on_message(filters.command("listapikeys"))
 async def list_api_keys_cmd(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")

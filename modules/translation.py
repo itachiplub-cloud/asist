@@ -5,7 +5,6 @@ from services.translation_service import set_language, get_supported_languages, 
 from utils.logger import logger
 
 
-@Client.on_message(filters.command("setlang"))
 async def set_lang(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -26,7 +25,6 @@ async def set_lang(client: Client, message: Message):
         await message.reply(f"❌ Unsupported language. Supported: {supported}")
 
 
-@Client.on_message(filters.command("translate"))
 async def translate_cmd(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")

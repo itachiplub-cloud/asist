@@ -5,7 +5,6 @@ from services.reward_service import add_reward, redeem_reward, list_rewards
 from utils.logger import logger
 
 
-@Client.on_message(filters.command("addreward"))
 async def add_reward_cmd(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -27,7 +26,6 @@ async def add_reward_cmd(client: Client, message: Message):
     await message.reply(f"🎁 Reward `{name}` added ({points} pts, {reward_type}).")
 
 
-@Client.on_message(filters.command("redeemreward"))
 async def redeem_reward_cmd(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -48,7 +46,6 @@ async def redeem_reward_cmd(client: Client, message: Message):
     await message.reply(result)
 
 
-@Client.on_message(filters.command("rewards"))
 async def rewards_cmd(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")

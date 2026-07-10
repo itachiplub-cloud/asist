@@ -6,7 +6,6 @@ from services.security_service import log_command, get_audit_summary, get_login_
 from utils.logger import logger
 
 
-@Client.on_message(filters.command("security"))
 async def security_cmd(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -25,7 +24,6 @@ async def security_cmd(client: Client, message: Message):
     await message.reply(text)
 
 
-@Client.on_message(filters.command("loginhistory"))
 async def login_history(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")

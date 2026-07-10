@@ -8,7 +8,6 @@ from utils.logger import logger
 db = Database()
 
 
-@Client.on_message(filters.command("ticket"))
 async def ticket_cmd(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -32,7 +31,6 @@ async def ticket_cmd(client: Client, message: Message):
     await message.reply(f"🎟️ Ticket `{tid}` created with priority {priority}.")
 
 
-@Client.on_message(filters.command("closeticket"))
 async def close_ticket_cmd(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -53,7 +51,6 @@ async def close_ticket_cmd(client: Client, message: Message):
     await message.reply("✅ Ticket closed." if success else "❌ Ticket not found.")
 
 
-@Client.on_message(filters.command("tickets"))
 async def tickets_cmd(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")

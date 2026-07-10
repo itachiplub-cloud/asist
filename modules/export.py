@@ -5,7 +5,6 @@ from services.export_service import export_users, export_groups, export_logs, ex
 from utils.logger import logger
 
 
-@Client.on_message(filters.command("export"))
 async def export_cmd(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")

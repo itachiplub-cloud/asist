@@ -9,7 +9,6 @@ from utils.logger import logger
 db = Database()
 
 
-@Client.on_message(filters.command("enableai"))
 async def enable_ai(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply(await get_text(message.chat.id, "not_authorized"))
@@ -20,7 +19,6 @@ async def enable_ai(client: Client, message: Message):
     await message.reply("🤖 **AI Group Manager enabled!**\n\nAuto FAQ, spam detection, and welcome messages are active.")
 
 
-@Client.on_message(filters.command("disableai"))
 async def disable_ai(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply(await get_text(message.chat.id, "not_authorized"))
@@ -31,7 +29,6 @@ async def disable_ai(client: Client, message: Message):
     await message.reply("🤖 **AI Group Manager disabled.**")
 
 
-@Client.on_message(filters.command("rules"))
 async def rules_command(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply(await get_text(message.chat.id, "not_authorized"))
@@ -41,7 +38,6 @@ async def rules_command(client: Client, message: Message):
     await message.reply(rules)
 
 
-@Client.on_message(filters.command("moderate"))
 async def moderate_command(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply(await get_text(message.chat.id, "not_authorized"))
