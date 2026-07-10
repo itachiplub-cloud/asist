@@ -7,7 +7,7 @@ STRING_SESSION = os.getenv("STRING_SESSION", "")
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
 DB_NAME = os.getenv("DB_NAME", "telegram_invite_bot")
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-BOT_TOKEN = os.getenv("BOT_TOKEN", "")
+
 OWNER_ID = int(os.getenv("OWNER_ID", 0))
 
 MAX_INVITES_PER_HOUR = int(os.getenv("MAX_INVITES_PER_HOUR", 25))
