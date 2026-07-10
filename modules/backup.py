@@ -14,7 +14,7 @@ async def backup_cmd(client: Client, message: Message):
         return
 
     msg = await message.reply("💾 Creating backup...")
-    path = await run_backup(client)
+    path = await run_backup()
     await msg.edit(f"✅ Backup created: `{path}`")
 
 

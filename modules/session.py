@@ -11,7 +11,7 @@ async def session_status(client: Client, message: Message):
         await message.reply("❌ You are not authorized to use this bot.")
         return
 
-    status = await get_session_status(client)
+    status = await get_session_status()
     await message.reply(status)
 
 
@@ -22,7 +22,7 @@ async def restart_session_cmd(client: Client, message: Message):
         return
 
     msg = await message.reply("🔄 Restarting session...")
-    success = await restart_session(client)
+    success = await restart_session()
     if success:
         await msg.edit("✅ Session restarted successfully.")
     else:

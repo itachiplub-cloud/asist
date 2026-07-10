@@ -11,22 +11,19 @@ from utils.permissions import is_authorized
 from utils.helpers import safe_invite, get_cooldown
 from utils.cooldown import CooldownManager
 from utils.logger import logger
+from utils import client_manager
 
 db = Database()
 invite_running: dict = {}
-invite_cooldowns: dict = {}
 
 
-async def resume_invite(client: Client):
+async def resume_invite():
     progress = await db.get_progress()
     if not progress:
         return
 
     source_id = progress["source_chat_id"]
-    target_id = progress["target_chat_id"]
-    last_user_id = progress.get("last_user_id")
-
-    logger.info(f"Resuming invite process: {source_id} -> {target_id}")
+    logger.info(f"Resuming invite process: {source_id} -> {progress['target_chat_id']}")
     invite_running[source_id] = True
 
 
@@ -62,13 +59,14 @@ async def invite_start(client: Client, message: Message):
         return
 
     msg = await message.reply("🔄 Starting invite process...")
+    ub = client_manager.userbot
 
     invite_running[source_chat_id] = True
     cooldown_mgr = CooldownManager()
 
     try:
         source_members = []
-        async for member in client.get_chat_members(source_chat_id):
+        async for member in ub.get_chat_members(source_chat_id):
             source_members.append(member)
     except Exception as e:
         invite_running[source_chat_id] = False
@@ -111,7 +109,7 @@ async def invite_start(client: Client, message: Message):
 
         if not should_skip:
             try:
-                chat_member = await client.get_chat_member(target_chat_id, user_id)
+                chat_member = await ub.get_chat_member(target_chat_id, user_id)
                 if chat_member:
                     should_skip, skip_reason = True, "already_member"
             except (PeerIdInvalid, UserIdInvalid):
@@ -134,13 +132,13 @@ async def invite_start(client: Client, message: Message):
 
         if not cooldown_mgr.can_invite():
             logger.info(f"Hourly quota reached for {source_chat_id}")
-            await client.send_message(
+            await client_manager.bot.send_message(
                 OWNER_ID,
                 f"⚠️ Hourly invite limit reached for source `{source_chat_id}`. Stopping."
             )
             break
 
-        success, err = await safe_invite(client, target_chat_id, user_id)
+        success, err = await safe_invite(ub, target_chat_id, user_id)
 
         if success:
             invited_count += 1
@@ -155,7 +153,7 @@ async def invite_start(client: Client, message: Message):
 
             if err == "flood_exceeded":
                 logger.error(f"FloodWait > 1h, stopping invite for {source_chat_id}")
-                await client.send_message(
+                await client_manager.bot.send_message(
                     OWNER_ID,
                     f"⚠️ FloodWait exceeded 1 hour. Invite process stopped for `{source_chat_id}`."
                 )
@@ -164,7 +162,7 @@ async def invite_start(client: Client, message: Message):
                 privacy_restrictions += 1
                 if privacy_restrictions >= 10:
                     logger.error(f"Too many privacy restrictions for {source_chat_id}")
-                    await client.send_message(
+                    await client_manager.bot.send_message(
                         OWNER_ID,
                         f"⚠️ Too many privacy restrictions. Stopping invite for `{source_chat_id}`."
                     )
@@ -178,7 +176,7 @@ async def invite_start(client: Client, message: Message):
 
             if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
                 logger.error(f"{MAX_CONSECUTIVE_ERRORS} consecutive errors, stopping for {source_chat_id}")
-                await client.send_message(
+                await client_manager.bot.send_message(
                     OWNER_ID,
                     f"⚠️ {MAX_CONSECUTIVE_ERRORS} consecutive errors. Invite process stopped for `{source_chat_id}`."
                 )
@@ -219,7 +217,7 @@ async def invite_start(client: Client, message: Message):
         f"Skipped: {skipped_count}\n"
         f"Errors: {error_count}"
     )
-    await client.send_message(OWNER_ID, summary)
+    await client_manager.bot.send_message(OWNER_ID, summary)
     await msg.edit(summary)
     logger.info(f"Invite process finished for {source_chat_id}")
 

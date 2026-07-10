@@ -1,5 +1,6 @@
 from pyrogram import Client, filters
 from pyrogram.types import Message
+from utils import client_manager
 from utils.permissions import is_owner
 from services.announcement_service import send_announcement, get_all_group_chats
 from utils.logger import logger
@@ -15,11 +16,12 @@ async def announce_cmd(client: Client, message: Message):
         await message.reply("Usage: /announce <text>")
         return
 
+    ub = client_manager.userbot
     text = " ".join(message.command[1:])
-    chats = await get_all_group_chats(client)
+    chats = await get_all_group_chats(ub)
 
     msg = await message.reply(f"📢 Sending announcement to {len(chats)} groups...")
-    result = await send_announcement(client, text, chats)
+    result = await send_announcement(ub, text, chats)
     await msg.edit(f"✅ Sent: {result['sent']} | Failed: {result['failed']}")
 
 
@@ -33,9 +35,10 @@ async def pin_announce(client: Client, message: Message):
         await message.reply("Usage: /pinannounce <text>")
         return
 
+    ub = client_manager.userbot
     text = " ".join(message.command[1:])
-    chats = await get_all_group_chats(client)
+    chats = await get_all_group_chats(ub)
 
     msg = await message.reply(f"📌 Pinning announcement to {len(chats)} groups...")
-    result = await send_announcement(client, text, chats, pin=True)
+    result = await send_announcement(ub, text, chats, pin=True)
     await msg.edit(f"✅ Pinned: {result['sent']} | Failed: {result['failed']}")
