@@ -1,31 +1,31 @@
 import asyncio
 import time
 
-from pyrogram import Client
 from database import Database
+from utils import client_manager
 from utils.logger import logger
 
 db = Database()
 _scheduler_tasks: dict = {}
 
-WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
-
-async def run_scheduler(client: Client):
+async def run_scheduler():
     tasks = await db.get_scheduled_tasks()
     for t in tasks:
         task_id = str(t["_id"])
         if task_id not in _scheduler_tasks:
             _scheduler_tasks[task_id] = asyncio.create_task(
-                _execute_task(client, t)
+                _execute_task(t)
             )
 
 
-async def _execute_task(client: Client, task: dict):
+async def _execute_task(task: dict):
     task_id = str(task["_id"])
     interval = task.get("interval", 86400)
     task_type = task.get("type")
     config = task.get("config", {})
+
+    ub = client_manager.userbot if task_type in ("broadcast", "invite") else None
 
     while True:
         now = time.time()
@@ -41,22 +41,21 @@ async def _execute_task(client: Client, task: dict):
                 chats = config.get("chats", [])
                 for chat_id in chats:
                     try:
-                        await client.send_message(chat_id, text)
+                        await ub.send_message(chat_id, text)
                     except Exception as e:
                         logger.warning(f"Broadcast to {chat_id} failed: {e}")
                     await asyncio.sleep(1)
 
             elif task_type == "backup":
                 from services.backup_service import run_backup
-                await run_backup(client)
+                await run_backup()
 
             elif task_type == "invite":
-                from modules.invite import invite_start
                 logger.info(f"Scheduled invite task: {config}")
 
             elif task_type == "report":
                 from services.analytics_service import generate_daily_report
-                await generate_daily_report(client)
+                await generate_daily_report()
 
             logger.info(f"Scheduled task {task_id} ({task_type}) executed")
         except Exception as e:

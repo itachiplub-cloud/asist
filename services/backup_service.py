@@ -1,22 +1,21 @@
-import json
 import os
 import subprocess
 import tarfile
+import shutil
 from datetime import datetime
 
-from config import BACKUP_DIR, MONGO_URI, DB_NAME
+from config import BACKUP_DIR, MONGO_URI
 from database import Database
 from utils.logger import logger
 
 db = Database()
 
 
-async def run_backup(client=None) -> str:
+async def run_backup() -> str:
     os.makedirs(BACKUP_DIR, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{BACKUP_DIR}/backup_{timestamp}.tar.gz"
 
-    # Dump MongoDB
     mongo_backup = f"{BACKUP_DIR}/mongo_{timestamp}"
     try:
         subprocess.run(
@@ -26,16 +25,13 @@ async def run_backup(client=None) -> str:
     except Exception as e:
         logger.warning(f"MongoDB dump failed: {e}")
 
-    # Create tar archive
     with tarfile.open(filename, "w:gz") as tar:
         if os.path.isdir(mongo_backup):
             tar.add(mongo_backup, arcname=f"mongo_{timestamp}")
         if os.path.isdir("logs"):
             tar.add("logs", arcname="logs")
 
-    # Cleanup temp
     if os.path.isdir(mongo_backup):
-        import shutil
         shutil.rmtree(mongo_backup, ignore_errors=True)
 
     logger.info(f"Backup created: {filename}")
@@ -61,7 +57,6 @@ async def restore_backup(backup_path: str) -> bool:
                     capture_output=True, timeout=300,
                 )
 
-        import shutil
         shutil.rmtree(extract_dir, ignore_errors=True)
         logger.info(f"Restored from {backup_path}")
         return True
