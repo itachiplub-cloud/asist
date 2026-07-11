@@ -13,6 +13,11 @@ async def send_announcement(client: Client, text: str, chats: list[int],
     result = {"sent": 0, "failed": 0}
     for chat_id in chats:
         try:
+            from utils.helpers import validate_chat_id
+            if not await validate_chat_id(client, chat_id):
+                logger.warning(f"Announcement: invalid chat {chat_id}, skipping")
+                result["failed"] += 1
+                continue
             if media:
                 msg = await client.send_photo(chat_id, media, caption=text)
             else:

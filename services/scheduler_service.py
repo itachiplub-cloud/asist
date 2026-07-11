@@ -41,6 +41,10 @@ async def _execute_task(task: dict):
                 chats = config.get("chats", [])
                 for chat_id in chats:
                     try:
+                        from utils.helpers import validate_chat_id
+                        if not await validate_chat_id(ub, chat_id):
+                            logger.warning(f"Broadcast: invalid chat {chat_id}, skipping")
+                            continue
                         await ub.send_message(chat_id, text)
                     except Exception as e:
                         logger.warning(f"Broadcast to {chat_id} failed: {e}")

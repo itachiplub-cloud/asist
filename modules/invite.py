@@ -70,6 +70,13 @@ async def invite_start(client: Client, message: Message):
         await message.reply(f"❌ Target group `{target_chat_id}` is no longer accessible. Removed from database.")
         return
 
+    # Validate source group before fetching members
+    valid_source = await validate_chat_id(ub, source_chat_id)
+    if not valid_source:
+        invite_running[source_chat_id] = False
+        await message.reply(f"❌ Source group `{source_chat_id}` is no longer accessible.")
+        return
+
     msg = await message.reply("🔄 Starting invite process...")
 
     invite_running[source_chat_id] = True

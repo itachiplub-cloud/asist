@@ -272,13 +272,6 @@ async def main():
     await _safe_start(userbot, "Userbot")
     await _safe_start(bot, "Bot")
 
-    # Delete any existing webhook (prevents polling conflict)
-    try:
-        await bot.delete_webhook()
-        logger.info("Webhook cleared")
-    except Exception as e:
-        logger.warning(f"Failed to delete webhook (non-fatal): {e}")
-
     # Set bot command menu
     try:
         await bot.set_bot_commands([
@@ -316,7 +309,6 @@ async def main():
             f"📦 Module handlers: {registered}",
             f"🛢️ MongoDB URI: `{MONGO_URI}`",
             f"🛢️ DB Name: `{DB_NAME}`",
-            f"🔄 Webhook: cleared",
             "",
             "**Your info:**",
             f"🆔 Your ID: `{message.from_user.id}`",
