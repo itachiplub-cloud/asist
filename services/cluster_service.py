@@ -1,51 +1,57 @@
-import random
 import asyncio
 
-from pyrogram import Client
 from pyrogram.errors import FloodWait
-from config import API_ID, API_HASH
 from database import Database
 from utils.logger import logger
+from utils.session_manager import start_session, stop_session, running_session_count, get_session
 
 db = Database()
-_clients: dict = {}
+_assistant_meta: dict = {}
 _current_index = 0
 _cooldown_managers: dict = {}
 
 
 async def initialize_assistants():
+    """Load assistant metadata only — do NOT start any sessions on boot."""
     assistants = await db.get_active_assistants()
     for a in assistants:
         aid = str(a["_id"])
-        if aid not in _clients:
-            try:
-                client = Client(
-                    name=f"assistant_{aid}",
-                    api_id=API_ID,
-                    api_hash=API_HASH,
-                    session_string=a["session_string"],
-                    in_memory=True,
-                )
-                await client.start()
-                _clients[aid] = client
-                logger.info(f"Assistant {a.get('name', aid)} started")
-            except FloodWait as e:
-                wait = e.value + 5
-                logger.warning(f"FloodWait starting assistant {aid}: sleeping {wait}s")
-                await asyncio.sleep(wait)
-            except Exception as e:
-                logger.error(f"Failed to start assistant {aid}: {e}")
+        _assistant_meta[aid] = {
+            "name": a.get("name", "Unnamed"),
+            "session_string": a["session_string"],
+        }
+        logger.info(f"Loaded assistant metadata: {a.get('name', aid)} ({aid})")
 
-    return list(_clients.keys())
+    count = len(_assistant_meta)
+    logger.info(f"Assistant metadata loaded: {count} assistant(s) registered")
+    return list(_assistant_meta.keys())
 
 
 async def get_next_assistant():
+    """Lazily get the next available assistant, starting a session if needed."""
     global _current_index
-    ids = list(_clients.keys())
+    ids = list(_assistant_meta.keys())
     if not ids:
+        logger.warning("No assistants registered")
         return None
-    _current_index = (_current_index + 1) % len(ids)
-    return _clients[ids[_current_index]]
+
+    for _ in range(len(ids)):
+        _current_index = (_current_index + 1) % len(ids)
+        aid = ids[_current_index]
+        meta = _assistant_meta[aid]
+        session_string = meta["session_string"]
+
+        existing = get_session(session_string)
+        if existing and existing.is_connected:
+            return existing
+
+        logger.info(f"Lazy-starting assistant session: {meta['name']} ({aid})")
+        client = await start_session(session_string, name=meta["name"])
+        if client:
+            return client
+
+    logger.error("All assistants failed to start")
+    return None
 
 
 async def distribute_task(task_type: str, task_data: dict):
@@ -60,50 +66,37 @@ async def distribute_task(task_type: str, task_data: dict):
 async def add_assistant_client(session_string: str, name: str = None):
     doc = await db.add_assistant(session_string, name)
     aid = str(doc["_id"])
-    try:
-        client = Client(
-            name=f"assistant_{aid}",
-            api_id=API_ID,
-            api_hash=API_HASH,
-            session_string=session_string,
-            in_memory=True,
-        )
-        await client.start()
-        _clients[aid] = client
-        logger.info(f"New assistant {name or aid} started")
-        return doc, True
-    except FloodWait as e:
-        wait = e.value + 5
-        logger.warning(f"FloodWait starting new assistant: sleeping {wait}s")
-        await asyncio.sleep(wait)
-        return doc, False
-    except Exception as e:
-        logger.error(f"Failed to start new assistant: {e}")
-        return doc, False
+    _assistant_meta[aid] = {
+        "name": name or "Unnamed",
+        "session_string": session_string,
+    }
+    logger.info(f"New assistant metadata saved: {name or aid} ({aid})")
+    return doc, True
 
 
 async def remove_assistant_client(assistant_id):
     aid = str(assistant_id)
-    if aid in _clients:
-        try:
-            await _clients[aid].stop()
-        except Exception:
-            pass
-        del _clients[aid]
+    meta = _assistant_meta.pop(aid, None)
+    if meta:
+        await stop_session(meta["session_string"])
+        logger.info(f"Stopped and removed assistant session: {meta.get('name', aid)}")
     await db.remove_assistant(assistant_id)
-    logger.info(f"Assistant {assistant_id} removed")
+    logger.info(f"Assistant {assistant_id} removed from database")
 
 
 async def get_assistant_stats() -> str:
-    assistants = await db.get_assistants()
-    if not assistants:
+    if not _assistant_meta:
+        meta_count = len(_assistant_meta)
+        db_count = len(await db.get_assistants())
+        if db_count > 0:
+            return "No assistants loaded. They will start on first use."
         return "No assistants configured."
 
     lines = "👥 **Assistants**\n\n"
-    for a in assistants:
-        aid = str(a["_id"])
-        online = "✅ Online" if aid in _clients else "❌ Offline"
-        lines += (
-            f"• {a.get('name', 'Unnamed')}\n"
-        )
+    for aid, meta in _assistant_meta.items():
+        client = get_session(meta["session_string"])
+        online = "✅ Online" if client and client.is_connected else "❌ Offline"
+        lines += f"• {meta['name']} — {online}\n"
+
+    lines += f"\nActive sessions: {running_session_count()}"
     return lines

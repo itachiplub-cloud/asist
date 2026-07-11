@@ -1,3 +1,5 @@
+from pyrogram.errors import PeerIdInvalid, ChannelInvalid, ChannelPrivate
+
 from config import OWNER_ID
 from utils import client_manager
 from utils.logger import logger
@@ -6,6 +8,8 @@ from utils.logger import logger
 async def notify_owner(text: str) -> None:
     try:
         await client_manager.bot.send_message(OWNER_ID, text)
+    except (PeerIdInvalid, ChannelInvalid, ChannelPrivate) as e:
+        logger.critical(f"OWNER_ID {OWNER_ID} is invalid or bot cannot reach it: {e}")
     except Exception as e:
         logger.error(f"Failed to notify owner: {e}")
 

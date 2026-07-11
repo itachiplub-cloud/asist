@@ -8,7 +8,7 @@ from pyrogram.types import Message
 from config import OWNER_ID, MAX_CONSECUTIVE_ERRORS, FLOODWAIT_LIMIT
 from database import Database
 from utils.permissions import is_authorized
-from utils.helpers import safe_invite, get_cooldown
+from utils.helpers import safe_invite, get_cooldown, validate_chat_id
 from utils.cooldown import CooldownManager
 from utils.logger import logger
 from utils import client_manager
@@ -57,8 +57,20 @@ async def invite_start(client: Client, message: Message):
         await message.reply("❌ An invite process is already running for this group.")
         return
 
-    msg = await message.reply("🔄 Starting invite process...")
+    logger.info(f"Invite requested: {source_chat_id} -> {target_chat_id} by {message.from_user.id}")
+
+    # Validate target group before starting
     ub = client_manager.userbot
+    valid = await validate_chat_id(ub, target_chat_id)
+    if not valid:
+        logger.warning(f"Target group {target_chat_id} is invalid, clearing from DB")
+        from database import Database
+        dbl = Database()
+        await dbl.target_groups.delete_one({"_id": "target"})
+        await message.reply(f"❌ Target group `{target_chat_id}` is no longer accessible. Removed from database.")
+        return
+
+    msg = await message.reply("🔄 Starting invite process...")
 
     invite_running[source_chat_id] = True
     cooldown_mgr = CooldownManager()
@@ -155,6 +167,15 @@ async def invite_start(client: Client, message: Message):
                 await client_manager.bot.send_message(
                     OWNER_ID,
                     f"⚠️ FloodWait exceeded 1 hour. Invite process stopped for `{source_chat_id}`."
+                )
+                break
+            elif err.startswith("invalid_peer:"):
+                bad_chat_id = err.split(":", 1)[1]
+                logger.error(f"Target group {bad_chat_id} is invalid, clearing from DB")
+                await db.target_groups.delete_one({"_id": "target"})
+                await client_manager.bot.send_message(
+                    OWNER_ID,
+                    f"⚠️ Target group `{bad_chat_id}` is invalid. Removed from database. Stopping invite."
                 )
                 break
             elif err == "privacy":

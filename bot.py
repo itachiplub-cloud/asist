@@ -340,8 +340,9 @@ async def main():
         OWNER_ID,
         "🤖 **Assistant Bot is now online!**\n\n"
         f"Handlers: {registered}\n"
-        f"Userbot: {userbot.me.first_name}\n"
-        f"Bot: {bot.me.first_name}\n"
+        f"Userbot: @{userbot.me.username or userbot.me.first_name}\n"
+        f"Bot: @{bot.me.username or bot.me.first_name}\n"
+        f"Assistant sessions: lazy (start on first use)\n"
         f"Send /debug to see full status."
     )
 
