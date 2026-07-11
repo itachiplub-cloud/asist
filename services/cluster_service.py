@@ -1,6 +1,8 @@
 import random
+import asyncio
 
 from pyrogram import Client
+from pyrogram.errors import FloodWait
 from config import API_ID, API_HASH
 from database import Database
 from utils.logger import logger
@@ -27,6 +29,10 @@ async def initialize_assistants():
                 await client.start()
                 _clients[aid] = client
                 logger.info(f"Assistant {a.get('name', aid)} started")
+            except FloodWait as e:
+                wait = e.value + 5
+                logger.warning(f"FloodWait starting assistant {aid}: sleeping {wait}s")
+                await asyncio.sleep(wait)
             except Exception as e:
                 logger.error(f"Failed to start assistant {aid}: {e}")
 
@@ -66,6 +72,11 @@ async def add_assistant_client(session_string: str, name: str = None):
         _clients[aid] = client
         logger.info(f"New assistant {name or aid} started")
         return doc, True
+    except FloodWait as e:
+        wait = e.value + 5
+        logger.warning(f"FloodWait starting new assistant: sleeping {wait}s")
+        await asyncio.sleep(wait)
+        return doc, False
     except Exception as e:
         logger.error(f"Failed to start new assistant: {e}")
         return doc, False

@@ -1,7 +1,7 @@
 import time
 import asyncio
 
-from pyrogram.errors import AccessTokenInvalid, AuthKeyUnregistered
+from pyrogram.errors import AccessTokenInvalid, AuthKeyUnregistered, FloodWait
 from config import OWNER_ID
 from database import Database
 from utils import client_manager
@@ -28,6 +28,11 @@ async def check_session_health() -> dict:
         health["is_valid"] = False
         logger.error("Session is invalid or expired")
         await notify_session_invalid()
+    except FloodWait as e:
+        wait = e.value + 5
+        logger.warning(f"FloodWait in health check: sleeping {wait}s")
+        await asyncio.sleep(wait)
+        return await check_session_health()
     except Exception as e:
         health["is_valid"] = False
         health["error"] = str(e)
@@ -57,12 +62,19 @@ async def restart_session() -> bool:
     ub = client_manager.userbot
     bot = client_manager.bot
     try:
-        await ub.stop()
-        await asyncio.sleep(2)
+        if ub.is_connected:
+            await ub.stop()
+            await asyncio.sleep(2)
+        logger.info("Starting userbot session...")
         await ub.start()
         logger.info("Session restarted successfully")
         await notify_owner("🔄 **Session Restarted**\nBot session was restarted successfully.")
         return True
+    except FloodWait as e:
+        wait = e.value + 5
+        logger.warning(f"FloodWait on session restart: sleeping {wait}s")
+        await asyncio.sleep(wait)
+        return await restart_session()
     except Exception as e:
         logger.error(f"Session restart failed: {e}")
         await notify_owner(f"❌ **Session Restart Failed**\n`{e}`")

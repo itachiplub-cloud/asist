@@ -1,9 +1,11 @@
 import asyncio
+import os
 import sys
 import time
 
 from pyrogram import Client, idle, filters
 from pyrogram.enums import ParseMode
+from pyrogram.errors import FloodWait
 from pyrogram.handlers import MessageHandler, ChatMemberUpdatedHandler
 from pyrogram.types import BotCommand
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -186,7 +188,51 @@ _MODULE_HANDLERS = [
 ]
 
 
+FLAG_FILE = "/tmp/bot_started.flag"
+MIN_RESTART_INTERVAL = 60  # seconds — prevent crashloop
+
+
+async def _safe_start(client, label):
+    """Start a client with FloodWait handling. Retries if rate-limited."""
+    attempt = 0
+    while True:
+        try:
+            if client.is_connected:
+                logger.info(f"{label} already connected, skipping start")
+                return
+            logger.info(f"Starting {label}...")
+            await client.start()
+            logger.info(f"{label} started as {client.me.first_name} (ID: {client.me.id})")
+            return
+        except FloodWait as e:
+            wait = e.value + 5
+            logger.warning(f"FloodWait on {label}: sleeping {wait}s (value={e.value})")
+            await asyncio.sleep(wait)
+            attempt += 1
+            if attempt >= 5:
+                logger.error(f"Giving up on {label} after {attempt} FloodWait retries")
+                raise
+
+
 async def main():
+    # ── Startup gate: exit early if process restarted too fast ──
+    if os.path.exists(FLAG_FILE):
+        try:
+            mtime = os.path.getmtime(FLAG_FILE)
+            elapsed = time.time() - mtime
+            if elapsed < MIN_RESTART_INTERVAL:
+                remaining = int(MIN_RESTART_INTERVAL - elapsed)
+                logger.error(
+                    f"Process restarted too fast ({elapsed:.0f}s < {MIN_RESTART_INTERVAL}s). "
+                    f"Sleeping {remaining}s before continuing to avoid auth FloodWait."
+                )
+                await asyncio.sleep(remaining)
+        except OSError:
+            pass
+
+    with open(FLAG_FILE, "w") as f:
+        f.write(str(time.time()))
+
     if not all([API_ID, API_HASH, STRING_SESSION, BOT_TOKEN, OWNER_ID]):
         logger.error(
             "Missing required environment variables: "
@@ -222,25 +268,28 @@ async def main():
     client_manager.userbot = userbot
     client_manager.bot = bot
 
-    # ── Start clients first ──
-    await userbot.start()
-    logger.info(f"Userbot started as {userbot.me.first_name} (ID: {userbot.me.id})")
-
-    await bot.start()
-    logger.info(f"Bot started as {bot.me.first_name} (ID: {bot.me.id})")
+    # ── Start clients with FloodWait safety ──
+    await _safe_start(userbot, "Userbot")
+    await _safe_start(bot, "Bot")
 
     # Delete any existing webhook (prevents polling conflict)
-    await bot.delete_webhook()
-    logger.info("Webhook cleared")
+    try:
+        await bot.delete_webhook()
+        logger.info("Webhook cleared")
+    except Exception as e:
+        logger.warning(f"Failed to delete webhook (non-fatal): {e}")
 
     # Set bot command menu
-    await bot.set_bot_commands([
-        BotCommand("start", "Start the bot"),
-        BotCommand("help", "Show help menu"),
-        BotCommand("ping", "Check latency"),
-        BotCommand("stats", "Bot statistics"),
-    ])
-    logger.info("Bot commands set")
+    try:
+        await bot.set_bot_commands([
+            BotCommand("start", "Start the bot"),
+            BotCommand("help", "Show help menu"),
+            BotCommand("ping", "Check latency"),
+            BotCommand("stats", "Bot statistics"),
+        ])
+        logger.info("Bot commands set")
+    except Exception as e:
+        logger.warning(f"Failed to set bot commands (non-fatal): {e}")
 
     # ── Debug handler: log every incoming message (lowest priority) ──
     async def _echo(client, message):
@@ -296,24 +345,38 @@ async def main():
         f"Send /debug to see full status."
     )
 
-    # ── Background services ──
-    await resume_invite()
-    await start_health_monitor()
-    await start_task_monitor()
-    await run_scheduler()
-    await initialize_assistants()
+    # ── Background services (each individually wrapped so a failure doesn't kill the process) ──
+    for service_name, service_coro in [
+        ("resume_invite", resume_invite()),
+        ("start_health_monitor", start_health_monitor()),
+        ("start_task_monitor", start_task_monitor()),
+        ("run_scheduler", run_scheduler()),
+        ("initialize_assistants", initialize_assistants()),
+    ]:
+        try:
+            await service_coro
+            logger.info(f"Background service '{service_name}' started")
+        except Exception as e:
+            logger.error(f"Background service '{service_name}' failed (non-fatal): {e}")
 
     # ── Scheduled reports via APScheduler ──
-    apscheduler = AsyncIOScheduler()
-    hour, minute = DAILY_REPORT_TIME.split(":")
-    apscheduler.add_job(generate_daily_report, "cron", args=[], hour=int(hour), minute=int(minute))
-    apscheduler.add_job(generate_weekly_report, "cron", args=[], day_of_week=0, hour=int(hour), minute=int(minute))
-    apscheduler.start()
+    try:
+        apscheduler = AsyncIOScheduler()
+        hour, minute = DAILY_REPORT_TIME.split(":")
+        apscheduler.add_job(generate_daily_report, "cron", args=[], hour=int(hour), minute=int(minute))
+        apscheduler.add_job(generate_weekly_report, "cron", args=[], day_of_week=0, hour=int(hour), minute=int(minute))
+        apscheduler.start()
+        logger.info("APScheduler started")
+    except Exception as e:
+        logger.warning(f"Failed to start APScheduler (non-fatal): {e}")
 
     logger.info("All services initialized")
     await idle()
 
-    apscheduler.shutdown()
+    try:
+        apscheduler.shutdown()
+    except Exception:
+        pass
     await bot.stop()
     await userbot.stop()
     logger.info("Bot stopped")
