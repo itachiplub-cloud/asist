@@ -1,12 +1,17 @@
 import asyncio
 import sys
+import time
 
 from pyrogram import Client, idle, filters
 from pyrogram.enums import ParseMode
 from pyrogram.handlers import MessageHandler, ChatMemberUpdatedHandler
+from pyrogram.types import BotCommand
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from config import API_ID, API_HASH, BOT_TOKEN, STRING_SESSION, OWNER_ID, DAILY_REPORT_TIME, WEEKLY_REPORT_DAY
+from config import (
+    API_ID, API_HASH, BOT_TOKEN, STRING_SESSION, OWNER_ID,
+    DAILY_REPORT_TIME, WEEKLY_REPORT_DAY, MONGO_URI, DB_NAME,
+)
 from database import Database
 from utils.logger import logger
 from utils import client_manager
@@ -49,116 +54,135 @@ from services.scheduler_service import run_scheduler
 from services.cluster_service import initialize_assistants
 
 
-HANDLERS = [
+_start_time = time.time()
+
+
+def _make_safe(handler_fn):
+    """Wrap a handler with try/except so user sees errors instead of silent failure."""
+    async def safe(client, message):
+        try:
+            await handler_fn(client, message)
+        except Exception as e:
+            logger.exception(f"Handler {handler_fn.__name__} crashed: {e}")
+            try:
+                await message.reply(
+                    f"❌ Internal error in `{handler_fn.__name__}`:\n`{e}`\n\n"
+                    f"Check logs for details."
+                )
+            except Exception:
+                pass
+    return safe
+
+
+_MODULE_HANDLERS = [
     # ── General ──
-    (start_command, filters.command("start")),
-    (help_command, filters.command("help")),
-    (ping_command, filters.command("ping")),
-    (stats_command, filters.command("stats")),
+    (start_command, filters.command("start") & filters.private),
+    (help_command, filters.command("help") & filters.private),
+    (stats_command, filters.command("stats") & filters.private),
 
     # ── Sudo management (owner only) ──
-    (add_sudo, filters.command("addsudo")),
-    (del_sudo, filters.command("delsudo")),
-    (sudo_list, filters.command("sudolist")),
+    (add_sudo, filters.command("addsudo") & filters.private),
+    (del_sudo, filters.command("delsudo") & filters.private),
+    (sudo_list, filters.command("sudolist") & filters.private),
 
     # ── Target group (owner only) ──
-    (set_target, filters.command("settarget")),
-    (target_info, filters.command("target")),
+    (set_target, filters.command("settarget") & filters.private),
+    (target_info, filters.command("target") & filters.private),
 
     # ── Invite ──
-    (invite_start, filters.command("invite")),
-    (stop_invite, filters.command("stopinvite")),
-    (invite_status, filters.command("invitestatus")),
+    (invite_start, filters.command("invite") & filters.private),
+    (stop_invite, filters.command("stopinvite") & filters.private),
+    (invite_status, filters.command("invitestatus") & filters.private),
 
     # ── Blacklist ──
-    (blacklist_user, filters.command("blacklist")),
-    (unblacklist_user, filters.command("unblacklist")),
+    (blacklist_user, filters.command("blacklist") & filters.private),
+    (unblacklist_user, filters.command("unblacklist") & filters.private),
 
     # ── AI Group Manager ──
-    (enable_ai, filters.command("enableai")),
-    (disable_ai, filters.command("disableai")),
+    (enable_ai, filters.command("enableai") & filters.private),
+    (disable_ai, filters.command("disableai") & filters.private),
     (rules_command, filters.command("rules")),
-    (moderate_command, filters.command("moderate")),
+    (moderate_command, filters.command("moderate") & filters.private),
 
     # ── Analytics ──
-    (group_stats, filters.command("groupstats")),
-    (activity_command, filters.command("activity")),
-    (top_members, filters.command("topmembers")),
+    (group_stats, filters.command("groupstats") & filters.private),
+    (activity_command, filters.command("activity") & filters.private),
+    (top_members, filters.command("topmembers") & filters.private),
 
     # ── Notifications (owner only) ──
-    (notify_settings, filters.command("notify")),
-    (list_notifications, filters.command("notifications")),
+    (notify_settings, filters.command("notify") & filters.private),
+    (list_notifications, filters.command("notifications") & filters.private),
 
     # ── Session (owner only) ──
-    (session_status, filters.command("sessionstatus")),
-    (restart_session_cmd, filters.command("restartsession")),
+    (session_status, filters.command("sessionstatus") & filters.private),
+    (restart_session_cmd, filters.command("restartsession") & filters.private),
 
     # ── Cluster (owner only) ──
-    (add_assistant, filters.command("addassistant")),
-    (remove_assistant, filters.command("removeassistant")),
-    (list_assistants, filters.command("listassistants")),
+    (add_assistant, filters.command("addassistant") & filters.private),
+    (remove_assistant, filters.command("removeassistant") & filters.private),
+    (list_assistants, filters.command("listassistants") & filters.private),
 
     # ── Plugin marketplace (owner only) ──
-    (load_plugin_cmd, filters.command("load")),
-    (unload_plugin_cmd, filters.command("unload")),
-    (reload_plugin_cmd, filters.command("reload")),
-    (list_plugins, filters.command("plugins")),
+    (load_plugin_cmd, filters.command("load") & filters.private),
+    (unload_plugin_cmd, filters.command("unload") & filters.private),
+    (reload_plugin_cmd, filters.command("reload") & filters.private),
+    (list_plugins, filters.command("plugins") & filters.private),
 
     # ── Scheduler (owner only) ──
-    (schedule_task, filters.command("schedule")),
-    (list_schedules, filters.command("listschedules")),
-    (cancel_schedule, filters.command("cancelschedule")),
+    (schedule_task, filters.command("schedule") & filters.private),
+    (list_schedules, filters.command("listschedules") & filters.private),
+    (cancel_schedule, filters.command("cancelschedule") & filters.private),
 
     # ── Campaign ──
-    (create_campaign_cmd, filters.command("createcampaign")),
-    (campaign_stats, filters.command("campaignstats")),
-    (delete_campaign, filters.command("deletecampaign")),
+    (create_campaign_cmd, filters.command("createcampaign") & filters.private),
+    (campaign_stats, filters.command("campaignstats") & filters.private),
+    (delete_campaign, filters.command("deletecampaign") & filters.private),
 
     # ── Backup (owner only) ──
-    (backup_cmd, filters.command("backup")),
-    (restore_cmd, filters.command("restore")),
-    (auto_backup, filters.command("autobackup")),
+    (backup_cmd, filters.command("backup") & filters.private),
+    (restore_cmd, filters.command("restore") & filters.private),
+    (auto_backup, filters.command("autobackup") & filters.private),
 
     # ── Security (owner only) ──
-    (security_cmd, filters.command("security")),
-    (login_history, filters.command("loginhistory")),
+    (security_cmd, filters.command("security") & filters.private),
+    (login_history, filters.command("loginhistory") & filters.private),
 
     # ── Export (owner only) ──
-    (export_cmd, filters.command("export")),
+    (export_cmd, filters.command("export") & filters.private),
 
     # ── Translation ──
-    (set_lang, filters.command("setlang")),
-    (translate_cmd, filters.command("translate")),
+    (set_lang, filters.command("setlang") & filters.private),
+    (translate_cmd, filters.command("translate") & filters.private),
 
     # ── Tickets ──
-    (ticket_cmd, filters.command("ticket")),
-    (close_ticket_cmd, filters.command("closeticket")),
-    (tickets_cmd, filters.command("tickets")),
+    (ticket_cmd, filters.command("ticket") & filters.private),
+    (close_ticket_cmd, filters.command("closeticket") & filters.private),
+    (tickets_cmd, filters.command("tickets") & filters.private),
 
     # ── Announcements (owner only) ──
-    (announce_cmd, filters.command("announce")),
-    (pin_announce, filters.command("pinannounce")),
+    (announce_cmd, filters.command("announce") & filters.private),
+    (pin_announce, filters.command("pinannounce") & filters.private),
 
     # ── Rewards (owner only) ──
-    (add_reward_cmd, filters.command("addreward")),
-    (redeem_reward_cmd, filters.command("redeemreward")),
-    (rewards_cmd, filters.command("rewards")),
+    (add_reward_cmd, filters.command("addreward") & filters.private),
+    (redeem_reward_cmd, filters.command("redeemreward") & filters.private),
+    (rewards_cmd, filters.command("rewards") & filters.private),
 
     # ── Recommendations (owner only) ──
-    (recommend_cmd, filters.command("recommend")),
+    (recommend_cmd, filters.command("recommend") & filters.private),
 
     # ── Events (owner only) ──
-    (create_event_cmd, filters.command("createevent")),
-    (events_cmd, filters.command("events")),
-    (delete_event_cmd, filters.command("deleteevent")),
+    (create_event_cmd, filters.command("createevent") & filters.private),
+    (events_cmd, filters.command("events") & filters.private),
+    (delete_event_cmd, filters.command("deleteevent") & filters.private),
 
     # ── API keys (owner only) ──
-    (api_key_cmd, filters.command("apikey")),
-    (revoke_api_key_cmd, filters.command("revokeapikey")),
-    (list_api_keys_cmd, filters.command("listapikeys")),
+    (api_key_cmd, filters.command("apikey") & filters.private),
+    (revoke_api_key_cmd, filters.command("revokeapikey") & filters.private),
+    (list_api_keys_cmd, filters.command("listapikeys") & filters.private),
 
     # ── System monitoring (owner only) ──
-    (system_cmd, filters.command("system")),
+    (system_cmd, filters.command("system") & filters.private),
 ]
 
 
@@ -171,7 +195,7 @@ async def main():
         sys.exit(1)
 
     db = Database()
-    logger.info("Connected to MongoDB")
+    logger.info("Database client created")
 
     # ── Userbot: performs actions (invite, moderate, announce, etc.) ──
     userbot = Client(
@@ -198,29 +222,79 @@ async def main():
     client_manager.userbot = userbot
     client_manager.bot = bot
 
-    # Register command handlers on bot only
-    registered = 0
-    for handler_fn, handler_filter in HANDLERS:
-        bot.add_handler(MessageHandler(handler_fn, handler_filter))
-        registered += 1
-    logger.info(f"Registered {registered} command handlers on bot")
-
-    # Debug handler: log every message the bot receives (lowest priority)
-    async def _echo(client, message):
-        logger.info(f"Bot received: '{message.text}' from {message.from_user.id} in chat {message.chat.id}")
-    bot.add_handler(MessageHandler(_echo, filters.all), group=1)
-
-    # Register AI handlers on userbot (spam detection, welcome, FAQ)
-    userbot.add_handler(MessageHandler(handle_message, filters.text))
-    userbot.add_handler(ChatMemberUpdatedHandler(welcome_new_user))
-
+    # ── Start clients first ──
     await userbot.start()
     logger.info(f"Userbot started as {userbot.me.first_name} (ID: {userbot.me.id})")
 
     await bot.start()
     logger.info(f"Bot started as {bot.me.first_name} (ID: {bot.me.id})")
 
-    await bot.send_message(OWNER_ID, "🤖 **Assistant Bot is now online!**")
+    # Delete any existing webhook (prevents polling conflict)
+    await bot.delete_webhook()
+    logger.info("Webhook cleared")
+
+    # Set bot command menu
+    await bot.set_bot_commands([
+        BotCommand("start", "Start the bot"),
+        BotCommand("help", "Show help menu"),
+        BotCommand("ping", "Check latency"),
+        BotCommand("stats", "Bot statistics"),
+    ])
+    logger.info("Bot commands set")
+
+    # ── Debug handler: log every incoming message (lowest priority) ──
+    async def _echo(client, message):
+        logger.info(f"Bot received: '{message.text}' from {message.from_user.id} in chat {message.chat.id}")
+    bot.add_handler(MessageHandler(_echo, filters.all), group=1)
+
+    # ── Minimal working commands (no module dependency) ──
+    @bot.on_message(filters.command("ping") & filters.private)
+    async def _ping(_, message):
+        before = time.time()
+        m = await message.reply("🏓 Pong!")
+        after = time.time()
+        await m.edit_text(f"🏓 **Pong!** `{round((after - before) * 1000, 2)}ms`")
+
+    @bot.on_message(filters.command("debug") & filters.private)
+    async def _debug(_, message):
+        lines = [
+            "🔍 **Bot Debug Report**",
+            "",
+            f"🕐 Uptime: {int(time.time() - _start_time)}s",
+            f"🤖 Bot: @{bot.me.username or 'N/A'} (ID: {bot.me.id})",
+            f"👤 Userbot: @{userbot.me.username or 'N/A'} (ID: {userbot.me.id})",
+            f"👑 Owner ID: `{OWNER_ID}`",
+            f"📦 Module handlers: {registered}",
+            f"🛢️ MongoDB URI: `{MONGO_URI}`",
+            f"🛢️ DB Name: `{DB_NAME}`",
+            f"🔄 Webhook: cleared",
+            "",
+            "**Your info:**",
+            f"🆔 Your ID: `{message.from_user.id}`",
+            f"👤 Name: {message.from_user.first_name}",
+            f"✅ Match Owner: {'YES' if message.from_user.id == OWNER_ID else 'NO'}",
+        ]
+        await message.reply("\n".join(lines))
+
+    # ── Register module command handlers with error wrapping ──
+    registered = 0
+    for handler_fn, handler_filter in _MODULE_HANDLERS:
+        bot.add_handler(MessageHandler(_make_safe(handler_fn), handler_filter))
+        registered += 1
+    logger.info(f"Registered {registered} module command handlers on bot")
+
+    # Register AI handlers on userbot (spam detection, welcome, FAQ)
+    userbot.add_handler(MessageHandler(handle_message, filters.text))
+    userbot.add_handler(ChatMemberUpdatedHandler(welcome_new_user))
+
+    await bot.send_message(
+        OWNER_ID,
+        "🤖 **Assistant Bot is now online!**\n\n"
+        f"Handlers: {registered}\n"
+        f"Userbot: {userbot.me.first_name}\n"
+        f"Bot: {bot.me.first_name}\n"
+        f"Send /debug to see full status."
+    )
 
     # ── Background services ──
     await resume_invite()
