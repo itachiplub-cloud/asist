@@ -7,7 +7,6 @@ from services.backup_service import run_backup, restore_backup, toggle_autobacku
 from utils.logger import logger
 
 
-@Client.on_message(filters.command("backup"))
 async def backup_cmd(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -18,7 +17,6 @@ async def backup_cmd(client: Client, message: Message):
     await msg.edit(f"✅ Backup created: `{path}`")
 
 
-@Client.on_message(filters.command("restore"))
 async def restore_cmd(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -39,7 +37,6 @@ async def restore_cmd(client: Client, message: Message):
     await msg.edit("✅ Restore completed." if success else "❌ Restore failed.")
 
 
-@Client.on_message(filters.command("autobackup"))
 async def auto_backup(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")

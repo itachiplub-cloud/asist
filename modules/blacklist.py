@@ -7,7 +7,6 @@ from utils.logger import logger
 db = Database()
 
 
-@Client.on_message(filters.command("blacklist"))
 async def blacklist_user(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -32,7 +31,6 @@ async def blacklist_user(client: Client, message: Message):
         await message.reply(f"❌ User `{user_id}` is already blacklisted.")
 
 
-@Client.on_message(filters.command("unblacklist"))
 async def unblacklist_user(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")

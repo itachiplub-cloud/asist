@@ -8,7 +8,6 @@ from utils.logger import logger
 db = Database()
 
 
-@Client.on_message(filters.command("createcampaign"))
 async def create_campaign_cmd(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -35,7 +34,6 @@ async def create_campaign_cmd(client: Client, message: Message):
     await message.reply(f"✅ Campaign `{name}` created.")
 
 
-@Client.on_message(filters.command("campaignstats"))
 async def campaign_stats(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -49,7 +47,6 @@ async def campaign_stats(client: Client, message: Message):
     await message.reply(stats)
 
 
-@Client.on_message(filters.command("deletecampaign"))
 async def delete_campaign(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")

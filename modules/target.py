@@ -7,7 +7,6 @@ from utils.logger import logger
 db = Database()
 
 
-@Client.on_message(filters.command("settarget"))
 async def set_target(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -34,7 +33,6 @@ async def set_target(client: Client, message: Message):
     await message.reply(f"✅ Target group set to `{chat_id}` ({title}).")
 
 
-@Client.on_message(filters.command("target"))
 async def target_info(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")

@@ -9,7 +9,6 @@ from utils.logger import logger
 db = Database()
 
 
-@Client.on_message(filters.command("groupstats"))
 async def group_stats(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -39,7 +38,6 @@ async def group_stats(client: Client, message: Message):
     await message.reply(text)
 
 
-@Client.on_message(filters.command("activity"))
 async def activity_command(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -63,7 +61,6 @@ async def activity_command(client: Client, message: Message):
     await message.reply(lines[:4000])
 
 
-@Client.on_message(filters.command("topmembers"))
 async def top_members(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")

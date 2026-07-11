@@ -10,7 +10,6 @@ from utils.logger import logger
 db = Database()
 
 
-@Client.on_message(filters.command("schedule"))
 async def schedule_task(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -52,7 +51,6 @@ async def schedule_task(client: Client, message: Message):
     await message.reply(f"✅ Scheduled `{task_type}` task every {interval}s.")
 
 
-@Client.on_message(filters.command("listschedules"))
 async def list_schedules(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -70,7 +68,6 @@ async def list_schedules(client: Client, message: Message):
     await message.reply(lines)
 
 
-@Client.on_message(filters.command("cancelschedule"))
 async def cancel_schedule(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")

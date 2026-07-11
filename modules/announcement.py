@@ -6,7 +6,6 @@ from services.announcement_service import send_announcement, get_all_group_chats
 from utils.logger import logger
 
 
-@Client.on_message(filters.command("announce"))
 async def announce_cmd(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -25,7 +24,6 @@ async def announce_cmd(client: Client, message: Message):
     await msg.edit(f"✅ Sent: {result['sent']} | Failed: {result['failed']}")
 
 
-@Client.on_message(filters.command("pinannounce"))
 async def pin_announce(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")

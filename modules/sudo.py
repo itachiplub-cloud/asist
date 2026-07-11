@@ -8,7 +8,6 @@ from utils.logger import logger
 db = Database()
 
 
-@Client.on_message(filters.command("addsudo"))
 async def add_sudo(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -36,7 +35,6 @@ async def add_sudo(client: Client, message: Message):
         await message.reply(f"❌ User `{user_id}` is already a sudo admin.")
 
 
-@Client.on_message(filters.command("delsudo"))
 async def del_sudo(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -60,7 +58,6 @@ async def del_sudo(client: Client, message: Message):
         await message.reply(f"❌ User `{user_id}` is not a sudo admin.")
 
 
-@Client.on_message(filters.command("sudolist"))
 async def sudo_list(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")

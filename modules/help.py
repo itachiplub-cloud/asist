@@ -4,7 +4,6 @@ from utils.permissions import is_authorized, is_owner
 from utils.logger import logger
 
 
-@Client.on_message(filters.command("help"))
 async def help_command(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")

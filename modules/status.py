@@ -7,7 +7,6 @@ from utils.logger import logger
 db = Database()
 
 
-@Client.on_message(filters.command("invitestatus"))
 async def invite_status(client: Client, message: Message):
     if not await is_authorized(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")

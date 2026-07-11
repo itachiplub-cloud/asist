@@ -5,7 +5,6 @@ from services.event_service import create_event, delete_event, list_events
 from utils.logger import logger
 
 
-@Client.on_message(filters.command("createevent"))
 async def create_event_cmd(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -30,7 +29,6 @@ async def create_event_cmd(client: Client, message: Message):
     await message.reply(f"📜 Event `{name}` created ({event_type}).")
 
 
-@Client.on_message(filters.command("events"))
 async def events_cmd(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
@@ -40,7 +38,6 @@ async def events_cmd(client: Client, message: Message):
     await message.reply(text)
 
 
-@Client.on_message(filters.command("deleteevent"))
 async def delete_event_cmd(client: Client, message: Message):
     if not await is_owner(message.from_user.id):
         await message.reply("❌ You are not authorized to use this bot.")
